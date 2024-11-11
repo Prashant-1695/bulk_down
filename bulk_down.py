@@ -3,7 +3,7 @@ import subprocess
 import requests
 
 # Configuration
-DOWNLOADS_FOLDER = os.path.expanduser("~/Downloads")
+DOWNLOADS_FOLDER = os.path.expanduser("./Downloads")
 ARIA2_PATH = "aria2c"  # Ensure 'aria2c' is in your PATH
 GOFILE_API_URL = "https://store1.gofile.io/uploadFile"
 LINKS_FILE = "links.txt"  # File containing URLs to download
@@ -59,6 +59,10 @@ def download_files_with_aria2(urls):
 
 def upload_file(file_path):
     """ Upload the file to gofile.io. """
+    if os.path.basename(file_path) == "aria2_downloads.txt":
+        print(f"Skipping upload for: {file_path}")  # Skip uploading aria2_downloads.txt
+        return None
+
     print(f"Attempting to upload: {file_path}")  # Debugging statement
     with open(file_path, 'rb') as f:
         response = requests.post(GOFILE_API_URL, files={'file': f})
@@ -99,13 +103,18 @@ def main():
 
     # After downloading, upload all files in the Downloads folder
     if downloaded_files:
-        send_telegram_message("Uploading files to gofile.io...")  # Notify that uploading is starting print("Uploading all files in the Downloads folder...")
+        send _telegram_message("Uploading files to gofile.io...")  # Notify that uploading is starting
+        print("Uploading all files in the Downloads folder...")
         download_links = []
         for file_name in downloaded_files:
             file_path = os.path.join(DOWNLOADS_FOLDER, file_name)
-            download_link = upload_file(file_path)
-            if download_link:
-                download_links.append(download_link)
+            # Check if the file exists before attempting to upload
+            if os.path.exists(file_path):
+                download_link = upload_file(file_path)
+                if download_link:
+                    download_links.append(download_link)
+            else:
+                print(f"File not found, skipping upload: {file_path}")
 
         if download_links:
             send_telegram_message("Files uploaded successfully:\n" + "\n".join(download_links))
