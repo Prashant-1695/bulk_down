@@ -63,6 +63,8 @@ def upload_file(file_path):
         print(f"Skipping upload for: {file_path}")  # Skip uploading aria2_downloads.txt
         return None
 
+    # Notify that the upload is starting
+    send_telegram_message(f"Starting upload for: {file_path}")
     print(f"Attempting to upload: {file_path}")  # Debugging statement
     with open(file_path, 'rb') as f:
         response = requests.post(GOFILE_API_URL, files={'file': f})
@@ -70,8 +72,9 @@ def upload_file(file_path):
     if response.ok:
         json_response = response.json()
         if json_response['status'] == 'ok':
-            print(f"Uploaded {file_path} successfully. URL: {json_response['data']['downloadPage']}")
-            return json_response['data']['downloadPage']  # Return the download link
+            download_link = json_response['data']['downloadPage']
+            print(f"Uploaded {file_path} successfully. URL: {download_link}")
+            return download_link  # Return the download link
         else:
             print(f"Failed to upload {file_path}: {json_response['message']}")
     else:
@@ -82,6 +85,11 @@ def read_urls_from_file(file_path):
     """ Read URLs from a text file. """
     with open(file_path, 'r') as f:
         return [line.strip() for line in f if line.strip()]
+
+def get_video_files(folder):
+    """ Get a list of video files in the given folder. """
+    video_extensions = ('.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.mpeg', '.mpg')
+    return [f for f in os.listdir(folder) if f.endswith(video_extensions)]
 
 def main():
     """ Main function to handle downloading and uploading. """
@@ -101,27 +109,20 @@ def main():
     else:
         print("All files already exist, no new downloads initiated.")
 
-    # After downloading, upload all files in the Downloads folder
-    if downloaded_files:
-        send_telegram_message("Uploading files to gofile.io...")  # Notify that uploading is starting
-        print("Uploading all files in the Downloads folder...")
-        download_links = []
-        for file_name in downloaded_files:
-            file_path = os.path.join(DOWNLOADS_FOLDER, file_name)
-            # Check if the file exists before attempting to upload
-            if os.path.exists(file_path):
-                download_link = upload_file(file_path)
-                if download_link:
-                    download_links.append(download_link)
-            else:
-                print(f"File not found, skipping upload: {file_path}")
-
-        if download_links:
-            send_telegram_message("Files uploaded successfully:\n" + "\n".join(download_links))
-        else:
-            send_telegram_message("No files were uploaded.")
+    # After downloading, upload all video files in the Downloads folder
+    video_files = get_video_files(DOWNLOADS_FOLDER)
+    if video_files:
+        upload_links = []  # List to store upload links
+        for video_file in video_files:
+            file_path = os.path.join(DOWNLOADS_FOLDER, video_file)
+            upload_link = upload_file(file_path)
+            if upload_link:
+                upload_links.append(upload_link)  # Collect the upload link
+        if upload_links:
+            # Send message with all upload links after completion
+            send_telegram_message("Upload completed successfully. Here are the download links:\n" + "\n".join(upload_links))
     else:
-        print("No files to upload.")
+        print("No video files found to upload.")
 
 if __name__ == "__main__":
     main()
