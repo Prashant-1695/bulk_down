@@ -103,7 +103,7 @@ def main():
 
     # After downloading, upload all files in the Downloads folder
     if downloaded_files:
-        send _telegram_message("Uploading files to gofile.io...")  # Notify that uploading is starting
+        send_telegram_message("Uploading files to gofile.io...")  # Notify that uploading is starting
         print("Uploading all files in the Downloads folder...")
         download_links = []
         for file_name in downloaded_files:
