@@ -1,6 +1,7 @@
 import os
 import subprocess
 import requests
+import time  # Import time module for measuring upload duration
 
 # Configuration
 DOWNLOADS_FOLDER = os.path.expanduser("./Downloads")
@@ -58,7 +59,7 @@ def download_files_with_aria2(urls):
     return aria2_file
 
 def upload_file(file_path):
-    """ Upload the file to gofile.io. """
+    """ Upload the file to gofile.io and calculate upload speed in MB/s. """
     if os.path.basename(file_path) == "aria2_downloads.txt":
         print(f"Skipping upload for: {file_path}")  # Skip uploading aria2_downloads.txt
         return None
@@ -66,14 +67,27 @@ def upload_file(file_path):
     # Notify that the upload is starting
     send_telegram_message(f"Starting upload for: {file_path}")
     print(f"Attempting to upload: {file_path}")  # Debugging statement
+
+    # Get file size for speed calculation
+    file_size = os.path.getsize(file_path)  # Size in bytes
+
+    start_time = time.time()  # Start time measurement
     with open(file_path, 'rb') as f:
         response = requests.post(GOFILE_API_URL, files={'file': f})
+
+    # Calculate the duration of the upload
+    duration = time.time() - start_time  # Duration in seconds
 
     if response.ok:
         json_response = response.json()
         if json_response['status'] == 'ok':
             download_link = json_response['data']['downloadPage']
             print(f"Uploaded {file_path} successfully. URL: {download_link}")
+
+            # Calculate upload speed in MB/s
+            upload_speed = (file_size / 1024 / 1024) / duration if duration > 0 else 0  # Convert bytes to MB
+            print(f"Upload Speed: {upload_speed:.2f} MB/s")
+
             return download_link  # Return the download link
         else:
             print(f"Failed to upload {file_path}: {json_response['message']}")
