@@ -64,8 +64,6 @@ def upload_file(file_path):
         print(f"Skipping upload for: {file_path}")  # Skip uploading aria2_downloads.txt
         return None
 
-    # Notify that the upload is starting
-    send_telegram_message(f"Starting upload for: {file_path}")
     print(f"Attempting to upload: {file_path}")  # Debugging statement
 
     # Get file size for speed calculation
@@ -126,6 +124,9 @@ def main():
     # After downloading, upload all video files in the Downloads folder
     video_files = get_video_files(DOWNLOADS_FOLDER)
     if video_files:
+        # Send a single message indicating that upload is starting
+        send_telegram_message("Uploading files to gofile.io...")
+
         upload_links = []  # List to store upload links
         for video_file in video_files:
             file_path = os.path.join(DOWNLOADS_FOLDER, video_file)
