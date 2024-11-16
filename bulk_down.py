@@ -46,7 +46,7 @@ def download_files_with_aria2(urls):
     # Send message indicating that downloads are starting
     send_telegram_message("Download started for the following files:\n" + "\n".join(urls))
 
-    command = [ARIA2_PATH, '-i', aria2_file, '--dir', DOWNLOADS_FOLDER, '--continue']
+    command = [ARIA2_PATH, '-i', aria2_file, '--dir', DOWNLOADS_FOLDER, '--continue', '-x16']
     try:
         subprocess.run(command, check=True)
         print("All downloads initiated.")
