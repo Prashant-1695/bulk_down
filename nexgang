@@ -41,6 +41,7 @@ RUN \
 RUN sudo apt-get install -y \
     python3 \
     python3-pip \
+    p7zip-full \
     aria2 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 

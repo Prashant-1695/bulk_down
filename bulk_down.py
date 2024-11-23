@@ -1,13 +1,15 @@
 import os
 import subprocess
 import requests
-import time  # Import time module for measuring upload duration
+import time
 
 # Configuration
 DOWNLOADS_FOLDER = os.path.expanduser("./Downloads")
 ARIA2_PATH = "aria2c"  # Ensure 'aria2c' is in your PATH
 GOFILE_API_URL = "https://store1.gofile.io/uploadFile"
 LINKS_FILE = "links.txt"  # File containing URLs to download
+ZIP_ENABLED = True  # Set this to True or False based on your requirement
+ZIP_FILE_NAME = "my_custom_zip_file.zip"  # Custom name for the zip file
 
 # Get Telegram Bot Token and Chat ID from environment variables
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -25,7 +27,7 @@ def send_telegram_message(message):
     payload = {
         'chat_id': TELEGRAM_CHAT_ID,
         'text': message,
-        'parse_mode': 'Markdown'  # Optional: Use Markdown for formatting
+        'parse_mode': 'Markdown'
     }
     response = requests.post(url, json=payload)
     if response.ok:
@@ -43,14 +45,12 @@ def download_files_with_aria2(urls):
         for url in urls:
             f.write(url + '\n')
 
-    # Send message indicating that downloads are starting
     send_telegram_message("Download started for the following files:\n" + "\n".join(urls))
 
     command = [ARIA2_PATH, '-i', aria2_file, '--dir', DOWNLOADS_FOLDER, '--continue', '-x16']
     try:
         subprocess.run(command, check=True)
         print("All downloads initiated.")
-        # Send message indicating that downloads are complete
         send_telegram_message("Download completed successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Error downloading files: {e}")
@@ -61,10 +61,10 @@ def download_files_with_aria2(urls):
 def upload_file(file_path):
     """ Upload the file to gofile.io and calculate upload speed in MB/s. """
     if os.path.basename(file_path) == "aria2_downloads.txt":
-        print(f"Skipping upload for: {file_path}")  # Skip uploading aria2_downloads.txt
+        print(f"Skipping upload for: {file_path}")
         return None
 
-    print(f"Attempting to upload: {file_path}")  # Debugging statement
+    print(f"Attempting to upload: {file_path}")
 
     # Get file size for speed calculation
     file_size = os.path.getsize(file_path)  # Size in bytes
@@ -83,7 +83,7 @@ def upload_file(file_path):
             print(f"Uploaded {file_path} successfully. URL: {download_link}")
 
             # Calculate upload speed in MB/s
-            upload_speed = (file_size / 1024 / 1024) / duration if duration > 0 else 0  # Convert bytes to MB
+            upload_speed = (file_size / 1024 / 1024) / duration if duration > 0 else 0
             print(f"Upload Speed: {upload_speed:.2f} MB/s")
 
             return download_link  # Return the download link
@@ -103,6 +103,24 @@ def get_video_files(folder):
     video_extensions = ('.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.mpeg', '.mpg')
     return [f for f in os.listdir(folder) if f.endswith(video_extensions)]
 
+def zip_files(file_paths, zip_name):
+    """ Zips the provided file paths into a single zip file using p7zip. """
+    print(f"Zipping files: {file_paths} into {zip_name}")
+    send_telegram_message("Started Zipping Files...")  # Notify that zipping has started
+
+    start_time = time.time()  # Capture the start time
+    command = ['7z', 'a', '-mx0', zip_name] + file_paths
+    try:
+        subprocess.run(command, check=True)
+        elapsed_time = time.time() - start_time  # Calculate elapsed time
+        print(f"Successfully created zip file: {zip_name}")
+        print(f"Elapsed time for zipping: {elapsed_time:.2f} seconds")
+
+        # Send a message with the elapsed time to Telegram
+        send_telegram_message(f"Zipping completed successfully in {elapsed_time:.2f} seconds.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error creating zip file: {e}")
+
 def main():
     """ Main function to handle downloading and uploading. """
     urls_to_download = read_urls_from_file(LINKS_FILE)
@@ -115,26 +133,40 @@ def main():
     aria2_file = None
     downloaded_files = []
 
-    if urls_to_download:  # Check if there are any new downloads
+    if urls_to_download:
         aria2_file = download_files_with_aria2(urls_to_download)
         downloaded_files.extend([url.split("/")[-1] for url in urls_to_download])
     else:
         print("All files already exist, no new downloads initiated.")
 
-    # After downloading, upload all video files in the Downloads folder
+    # After downloading, prepare for upload
     video_files = get_video_files(DOWNLOADS_FOLDER)
     if video_files:
-        # Send a single message indicating that upload is starting
         send_telegram_message("Uploading files to gofile.io...")
 
         upload_links = []  # List to store upload links
-        for video_file in video_files:
-            file_path = os.path.join(DOWNLOADS_FOLDER, video_file)
-            upload_link = upload_file(file_path)
+
+        if ZIP_ENABLED:
+            zip_name = os.path.join(DOWNLOADS_FOLDER, ZIP_FILE_NAME)  # Custom zip file name
+            zip_files([os.path.join(DOWNLOADS_FOLDER, f) for f in video_files], zip_name)
+
+            # Remove original files after zipping
+            for video_file in video_files:
+                os.remove(os.path.join(DOWNLOADS_FOLDER, video_file))
+
+            # Upload the zip file
+            upload_link = upload_file(zip_name)
             if upload_link:
-                upload_links.append(upload_link)  # Collect the upload link
+                upload_links.append(upload_link)
+
+        else:
+            for video_file in video_files:
+                file_path = os.path.join(DOWNLOADS_FOLDER, video_file)
+                upload_link = upload_file(file_path)
+                if upload_link:
+                    upload_links.append(upload_link)
+
         if upload_links:
-            # Send message with all upload links after completion
             send_telegram_message("Upload completed successfully. Here are the download links:\n" + "\n".join(upload_links))
     else:
         print("No video files found to upload.")
