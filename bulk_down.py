@@ -6,10 +6,9 @@ import time
 # Configuration
 DOWNLOADS_FOLDER = os.path.expanduser("./Downloads")
 ARIA2_PATH = "aria2c"  # Ensure 'aria2c' is in your PATH
-GOFILE_API_URL = "https://store1.gofile.io/uploadFile"
 LINKS_FILE = "links.txt"  # File containing URLs to download
 ZIP_ENABLED = True  # Set this to True or False based on your requirement
-ZIP_FILE_NAME = "my_custom_zip_file.zip"  # Custom name for the zip file
+ZIP_FILE_NAME = "Mad For Each Other.zip"  # Custom name for the zip file
 
 # Get Telegram Bot Token and Chat ID from environment variables
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -58,41 +57,6 @@ def download_files_with_aria2(urls):
 
     return aria2_file
 
-def upload_file(file_path):
-    """ Upload the file to gofile.io and calculate upload speed in MB/s. """
-    if os.path.basename(file_path) == "aria2_downloads.txt":
-        print(f"Skipping upload for: {file_path}")
-        return None
-
-    print(f"Attempting to upload: {file_path}")
-
-    # Get file size for speed calculation
-    file_size = os.path.getsize(file_path)  # Size in bytes
-
-    start_time = time.time()  # Start time measurement
-    with open(file_path, 'rb') as f:
-        response = requests.post(GOFILE_API_URL, files={'file': f})
-
-    # Calculate the duration of the upload
-    duration = time.time() - start_time  # Duration in seconds
-
-    if response.ok:
-        json_response = response.json()
-        if json_response['status'] == 'ok':
-            download_link = json_response['data']['downloadPage']
-            print(f"Uploaded {file_path} successfully. URL: {download_link}")
-
-            # Calculate upload speed in MB/s
-            upload_speed = (file_size / 1024 / 1024) / duration if duration > 0 else 0
-            print(f"Upload Speed: {upload_speed:.2f} MB/s")
-
-            return download_link  # Return the download link
-        else:
-            print(f"Failed to upload {file_path}: {json_response['message']}")
-    else:
-        print(f"Failed to upload {file_path} with status code {response.status_code}")
-    return None
-
 def read_urls_from_file(file_path):
     """ Read URLs from a text file. """
     with open(file_path, 'r') as f:
@@ -122,7 +86,7 @@ def zip_files(file_paths, zip_name):
         print(f"Error creating zip file: {e}")
 
 def main():
-    """ Main function to handle downloading and uploading. """
+    """ Main function to handle downloading. """
     urls_to_download = read_urls_from_file(LINKS_FILE)
 
     existing_files = {url.split("/")[-1]: os.path.join(DOWNLOADS_FOLDER, url.split("/")[-1])
@@ -130,46 +94,23 @@ def main():
 
     urls_to_download = [url for url in urls_to_download if url.split("/")[-1] not in existing_files]
 
-    aria2_file = None
-    downloaded_files = []
-
     if urls_to_download:
-        aria2_file = download_files_with_aria2(urls_to_download)
-        downloaded_files.extend([url.split("/")[-1] for url in urls_to_download])
+        download_files_with_aria2(urls_to_download)
+        print("Download completed successfully.")
     else:
         print("All files already exist, no new downloads initiated.")
 
-    # After downloading, prepare for upload
+    # Process video files for zipping if ZIP_ENABLED is set to True
     video_files = get_video_files(DOWNLOADS_FOLDER)
-    if video_files:
-        send_telegram_message("Uploading files to gofile.io...")
+    if video_files and ZIP_ENABLED:
+        zip_name = os.path.join(DOWNLOADS_FOLDER, ZIP_FILE_NAME)  # Custom zip file name
+        zip_files([os.path.join(DOWNLOADS_FOLDER, f) for f in video_files], zip_name)
 
-        upload_links = []  # List to store upload links
-
-        if ZIP_ENABLED:
-            zip_name = os.path.join(DOWNLOADS_FOLDER, ZIP_FILE_NAME)  # Custom zip file name
-            zip_files([os.path.join(DOWNLOADS_FOLDER, f) for f in video_files], zip_name)
-
-            # Remove original files after zipping
-            for video_file in video_files:
-                os.remove(os.path.join(DOWNLOADS_FOLDER, video_file))
-
-            # Upload the zip file
-            upload_link = upload_file(zip_name)
-            if upload_link:
-                upload_links.append(upload_link)
-
-        else:
-            for video_file in video_files:
-                file_path = os.path.join(DOWNLOADS_FOLDER, video_file)
-                upload_link = upload_file(file_path)
-                if upload_link:
-                    upload_links.append(upload_link)
-
-        if upload_links:
-            send_telegram_message("Upload completed successfully. Here are the download links:\n" + "\n".join(upload_links))
-    else:
-        print("No video files found to upload.")
+        # Remove original files after zipping
+        for video_file in video_files:
+            os.remove(os.path.join(DOWNLOADS_FOLDER, video_file))
+    elif not ZIP_ENABLED:
+        print("Zipping is disabled. Skipping zipping step.")
 
 if __name__ == "__main__":
     main()
