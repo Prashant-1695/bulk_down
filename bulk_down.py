@@ -8,7 +8,7 @@ DOWNLOADS_FOLDER = os.path.expanduser("./Downloads")
 ARIA2_PATH = "aria2c"  # Ensure 'aria2c' is in your PATH
 LINKS_FILE = "links.txt"  # File containing URLs to download
 ZIP_ENABLED = True  # Set this to True or False based on your requirement
-ZIP_FILE_NAME = "Mad For Each Other.zip"  # Custom name for the zip file
+ZIP_FILE_NAME = "Mad For Each Other"  # Custom name for the zip file
 
 # Get Telegram Bot Token and Chat ID from environment variables
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -103,7 +103,7 @@ def main():
     # Process video files for zipping if ZIP_ENABLED is set to True
     video_files = get_video_files(DOWNLOADS_FOLDER)
     if video_files and ZIP_ENABLED:
-        zip_name = os.path.join(DOWNLOADS_FOLDER, ZIP_FILE_NAME)  # Custom zip file name
+        zip_name = os.path.join(DOWNLOADS_FOLDER, ZIP_FILE_NAME + '.7z')  # Custom zip file name with default extension
         zip_files([os.path.join(DOWNLOADS_FOLDER, f) for f in video_files], zip_name)
 
         # Remove original files after zipping
