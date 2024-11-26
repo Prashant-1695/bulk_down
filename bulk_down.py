@@ -8,7 +8,7 @@ DOWNLOADS_FOLDER = os.path.expanduser("./Downloads")
 ARIA2_PATH = "aria2c"  # Ensure 'aria2c' is in your PATH
 LINKS_FILE = "links.txt"  # File containing URLs to download
 ZIP_ENABLED = True  # Set this to True or False based on your requirement
-ZIP_FILE_NAME = "Love Scenery"  # Custom name for the zip file
+ZIP_FILE_NAME = "My.Girl.VIKI.x264.720p"  # Custom name for the zip file
 
 # Get Telegram Bot Token and Chat ID from environment variables
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
