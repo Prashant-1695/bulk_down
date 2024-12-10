@@ -5,10 +5,10 @@ import time
 
 # Configuration
 DOWNLOADS_FOLDER = os.path.expanduser("./Downloads")
+SUB_FOLDER_NAME = "Moonlight.VIKI.x264.1080p"  # Custom sub-folder name
 ARIA2_PATH = "aria2c"  # Ensure 'aria2c' is in your PATH
 LINKS_FILE = "links.txt"  # File containing URLs to download
 ZIP_ENABLED = True  # Set this to True or False based on your requirement
-ZIP_FILE_NAME = "Familiar.Wife.1080p.NF.WEB-DL.DDP2.0.H.264"  # Custom name for the zip file
 
 # Get Telegram Bot Token and Chat ID from environment variables
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -34,19 +34,19 @@ def send_telegram_message(message):
     else:
         print(f"Failed to send message: {response.status_code}, {response.text}")
 
-def download_files_with_aria2(urls):
+def download_files_with_aria2(urls, download_dir):
     """ Download multiple files using aria2. """
-    ensure_directory_exists(DOWNLOADS_FOLDER)
+    ensure_directory_exists(download_dir)
 
-    aria2_file = os.path.join(DOWNLOADS_FOLDER, "aria2_downloads.txt")
+    aria2_file = os.path.join(download_dir, "aria2_downloads.txt")
 
     with open(aria2_file, 'w') as f:
         for url in urls:
             f.write(url + '\n')
 
-    send_telegram_message("Download started for the following files:\n" + "\n".join(urls))
+    send_telegram_message(f"Download started for: {SUB_FOLDER_NAME}")
 
-    command = [ARIA2_PATH, '-i', aria2_file, '--dir', DOWNLOADS_FOLDER, '--continue', '-x16']
+    command = [ARIA2_PATH, '-i', aria2_file, '--dir', download_dir, '--continue', '-x16']
     try:
         subprocess.run(command, check=True)
         print("All downloads initiated.")
@@ -55,25 +55,18 @@ def download_files_with_aria2(urls):
         print(f"Error downloading files: {e}")
         send_telegram_message("Error occurred during download.")
 
-    return aria2_file
-
 def read_urls_from_file(file_path):
     """ Read URLs from a text file. """
     with open(file_path, 'r') as f:
         return [line.strip() for line in f if line.strip()]
 
-def get_video_files(folder):
-    """ Get a list of video files in the given folder. """
-    video_extensions = ('.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.mpeg', '.mpg')
-    return [f for f in os.listdir(folder) if f.endswith(video_extensions)]
-
-def zip_files(file_paths, zip_name):
-    """ Zips the provided file paths into a single zip file using p7zip. """
-    print(f"Zipping files: {file_paths} into {zip_name}")
-    send_telegram_message("Started Zipping Files...")  # Notify that zipping has started
+def zip_folder(folder_path, zip_name):
+    """ Zips the provided folder into a single zip file using p7zip. """
+    print(f"Zipping folder: {folder_path} into {zip_name}")
+    send_telegram_message("Started Zipping Folder...")
 
     start_time = time.time()  # Capture the start time
-    command = ['7z', 'a', '-mx0', zip_name] + file_paths
+    command = ['7z', 'a', '-mx0', zip_name, folder_path]
     try:
         subprocess.run(command, check=True)
         elapsed_time = time.time() - start_time  # Calculate elapsed time
@@ -89,28 +82,25 @@ def main():
     """ Main function to handle downloading. """
     urls_to_download = read_urls_from_file(LINKS_FILE)
 
-    existing_files = {url.split("/")[-1]: os.path.join(DOWNLOADS_FOLDER, url.split("/")[-1])
-                      for url in urls_to_download if os.path.exists(os.path.join(DOWNLOADS_FOLDER, url.split("/")[-1]))}
+    # Create sub-folder for downloads
+    sub_folder_path = os.path.join(DOWNLOADS_FOLDER, SUB_FOLDER_NAME)
+    ensure_directory_exists(sub_folder_path)
+
+    existing_files = {url.split("/")[-1]: os.path.join(sub_folder_path, url.split("/")[-1])
+                      for url in urls_to_download if os.path.exists(os.path.join(sub_folder_path, url.split("/")[-1]))}
 
     urls_to_download = [url for url in urls_to_download if url.split("/")[-1] not in existing_files]
 
     if urls_to_download:
-        download_files_with_aria2(urls_to_download)
+        download_files_with_aria2(urls_to_download, sub_folder_path)
         print("Download completed successfully.")
     else:
         print("All files already exist, no new downloads initiated.")
 
-    # Process video files for zipping if ZIP_ENABLED is set to True
-    video_files = get_video_files(DOWNLOADS_FOLDER)
-    if video_files and ZIP_ENABLED:
-        zip_name = os.path.join(DOWNLOADS_FOLDER, ZIP_FILE_NAME + '.7z')  # Custom zip file name with default extension
-        zip_files([os.path.join(DOWNLOADS_FOLDER, f) for f in video_files], zip_name)
-
-        # Remove original files after zipping
-        for video_file in video_files:
-            os.remove(os.path.join(DOWNLOADS_FOLDER, video_file))
-    elif not ZIP_ENABLED:
-        print("Zipping is disabled. Skipping zipping step.")
+    # Zip the sub-folder if ZIP_ENABLED is set to True
+    if ZIP_ENABLED:
+        zip_name = os.path.join(DOWNLOADS_FOLDER, SUB_FOLDER_NAME + '.7z')  # Custom zip file name with default extension
+        zip_folder(sub_folder_path, zip_name)
 
 if __name__ == "__main__":
     main()
