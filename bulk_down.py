@@ -97,6 +97,12 @@ def main():
     else:
         print("All files already exist, no new downloads initiated.")
 
+    # Remove aria2_downloads.txt file if it exists
+    aria2_file_path = os.path.join(sub_folder_path, "aria2_downloads.txt")
+    if os.path.exists(aria2_file_path):
+        os.remove(aria2_file_path)
+        print(f"Removed temporary file: {aria2_file_path}")
+
     # Zip the sub-folder if ZIP_ENABLED is set to True
     if ZIP_ENABLED:
         zip_name = os.path.join(DOWNLOADS_FOLDER, SUB_FOLDER_NAME + '.7z')  # Custom zip file name with default extension
