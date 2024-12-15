@@ -35,7 +35,7 @@ def send_telegram_message(message):
         print(f"Failed to send message: {response.status_code}, {response.text}")
 
 def download_files_with_aria2(urls, download_dir):
-    """ Download multiple files using aria2. """
+    """ Download multiple files using aria2 and return failed downloads. """
     ensure_directory_exists(download_dir)
 
     aria2_file = os.path.join(download_dir, "aria2_downloads.txt")
@@ -51,9 +51,19 @@ def download_files_with_aria2(urls, download_dir):
         subprocess.run(command, check=True)
         print("All downloads initiated.")
         send_telegram_message("Download completed successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error downloading files: {e}")
-        send_telegram_message("Error occurred during download.")
+        return []  # No failed downloads
+    except subprocess.CalledProcessError:
+        print("Some downloads failed.")
+        send_telegram_message("Some downloads failed. Attempting to re-download.")
+
+    # Collect failed downloads
+    failed_downloads = []
+    for url in urls:
+        file_name = os.path.join(download_dir, url.split("/")[-1])
+        if not os.path.exists(file_name):
+            failed_downloads.append(url)
+
+    return failed_downloads
 
 def read_urls_from_file(file_path):
     """ Read URLs from a text file. """
@@ -72,8 +82,6 @@ def zip_folder(folder_path, zip_name):
         elapsed_time = time.time() - start_time  # Calculate elapsed time
         print(f"Successfully created zip file: {zip_name}")
         print(f"Elapsed time for zipping: {elapsed_time:.2f} seconds")
-
-        # Send a message with the elapsed time to Telegram
         send_telegram_message(f"Zipping completed successfully in {elapsed_time:.2f} seconds.")
     except subprocess.CalledProcessError as e:
         print(f"Error creating zip file: {e}")
@@ -92,8 +100,17 @@ def main():
     urls_to_download = [url for url in urls_to_download if url.split("/")[-1] not in existing_files]
 
     if urls_to_download:
-        download_files_with_aria2(urls_to_download, sub_folder_path)
-        print("Download completed successfully.")
+        failed_downloads = download_files_with_aria2(urls_to_download, sub_folder_path)
+
+        # Retry failed downloads
+        if failed_downloads:
+            print("Retrying failed downloads...")
+            failed_downloads = download_files_with_aria2(failed_downloads, sub_folder_path)
+
+        if failed_downloads:
+            print("Some downloads still failed after retrying.")
+        else:
+            print("All downloads completed successfully.")
     else:
         print("All files already exist, no new downloads initiated.")
 
