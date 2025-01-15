@@ -5,7 +5,7 @@ import time
 
 # Configuration
 DOWNLOADS_FOLDER = os.path.expanduser("./Downloads")
-SUB_FOLDER_NAME = "The Penthouse (2020)"  # Custom sub-folder name
+SUB_FOLDER_NAME = "Move to Heaven"  # Custom sub-folder name
 ARIA2_PATH = "aria2c"  # Ensure 'aria2c' is in your PATH
 LINKS_FILE = "links.txt"  # File containing URLs to download
 ZIP_ENABLED = True  # Set this to True or False based on your requirement
