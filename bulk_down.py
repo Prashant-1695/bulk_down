@@ -100,17 +100,15 @@ def main():
     urls_to_download = [url for url in urls_to_download if url.split("/")[-1] not in existing_files]
 
     if urls_to_download:
-        failed_downloads = download_files_with_aria2(urls_to_download, sub_folder_path)
+        while True:
+            failed_downloads = download_files_with_aria2(urls_to_download, sub_folder_path)
 
-        # Retry failed downloads
-        if failed_downloads:
-            print("Retrying failed downloads...")
-            failed_downloads = download_files_with_aria2(failed_downloads, sub_folder_path)
-
-        if failed_downloads:
-            print("Some downloads still failed after retrying.")
-        else:
-            print("All downloads completed successfully.")
+            if not failed_downloads:
+                print("All downloads completed successfully.")
+                break
+            else:
+                print("Retrying failed downloads...")
+                urls_to_download = failed_downloads
     else:
         print("All files already exist, no new downloads initiated.")
 
